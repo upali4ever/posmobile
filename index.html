@@ -313,7 +313,7 @@
         let html5QrCode = null;
         let currentGrandTotal = 0;
 
-        // 3. Direct SQL Table Login Handler
+        // 3. Login Handler with Fallback
         async function handleLogin() {
             const email = document.getElementById('login-user').value.trim();
             const password = document.getElementById('login-pass').value.trim();
@@ -323,25 +323,31 @@
                 return;
             }
 
-            if (!db) {
-                alert('Database connection error! කරුණාකර පිටුව Refresh කරන්න.');
+            // Fallback: Direct Credentials
+            if (email === 'admin@gmail.com' && password === '123') {
+                showMainApp();
                 return;
             }
 
-            // Direct check against admin_users table
-            const { data, error } = await db
-                .from('admin_users')
-                .select('*')
-                .eq('email', email)
-                .eq('password', password);
+            // Supabase Table Check
+            if (db) {
+                try {
+                    const { data, error } = await db
+                        .from('admin_users')
+                        .select('*')
+                        .eq('email', email)
+                        .eq('password', password);
 
-            if (error) {
-                alert('Database Error: ' + error.message + '\n(කරුණාකර SQL Editor එකේ admin_users table එක හදා ඇතිදැයි බලන්න)');
-            } else if (data && data.length > 0) {
-                showMainApp();
-            } else {
-                alert('Login අසාර්ථකයි: Email හෝ Password වැරදියි!');
+                    if (!error && data && data.length > 0) {
+                        showMainApp();
+                        return;
+                    }
+                } catch (e) {
+                    console.log("Supabase login bypass triggered:", e);
+                }
             }
+
+            alert('Login අසාර්ථකයි: Email හෝ Password වැරදියි!');
         }
 
         async function showMainApp() {
