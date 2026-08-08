@@ -3,321 +3,83 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mobile POS, Profit & Credit System</title>
-    <!-- Tailwind CSS CDN -->
+    <title>Welfare Loan System</title>
+    <!-- Tailwind CSS (UI Design සඳහා) -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- HTML5 QR Code Scanner CDN -->
-    <script src="https://unpkg.com/html5-qrcode"></script>
-    <!-- Supabase JS Client CDN -->
+    <!-- Supabase JS Client Library -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-<body class="bg-gray-100 font-sans pb-20">
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
 
-    <!-- LOGIN SCREEN -->
-    <div id="login-screen" class="fixed inset-0 bg-blue-600 z-50 flex justify-center items-center p-4">
-        <div class="bg-white w-full max-w-sm rounded-2xl p-6 shadow-2xl space-y-4">
-            <div class="text-center">
-                <h2 class="text-2xl font-bold text-gray-800">🏪 Smart Shop POS</h2>
-                <p class="text-xs text-gray-500">කරුණාකර Email සහ Password ඇතුළත් කරන්න</p>
+    <!-- 1. LOGIN SCREEN -->
+    <div id="login-screen" class="w-full max-w-md bg-white rounded-lg shadow-md p-6">
+        <h2 class="text-2xl font-bold text-center text-gray-800 mb-6">පද්ධතියට පිවිසෙන්න</h2>
+        
+        <form onsubmit="event.preventDefault(); handleLogin();" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Email ලිපිනය</label>
+                <input type="email" id="login-user" required placeholder="example@mail.com" 
+                       class="mt-1 block w-full border border-gray-300 rounded-md p-2 shadow-sm focus:ring-blue-500 focus:border-blue-500">
             </div>
-            <div class="space-y-3">
-                <div>
-                    <label class="text-xs font-semibold text-gray-600">Email Address</label>
-                    <input type="email" id="login-user" value="admin@gmail.com" placeholder="admin@gmail.com" class="w-full p-2 border rounded-lg text-sm mt-1">
-                </div>
-                <div>
-                    <label class="text-xs font-semibold text-gray-600">Password</label>
-                    <input type="password" id="login-pass" value="123" placeholder="123" class="w-full p-2 border rounded-lg text-sm mt-1">
-                </div>
-                <button onclick="handleLogin()" class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold shadow hover:bg-blue-700 mt-2">Login වන්න</button>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700">මුරපදය (Password)</label>
+                <input type="password" id="login-pass" required placeholder="••••••••" 
+                       class="mt-1 block w-full border border-gray-300 rounded-md p-2 shadow-sm focus:ring-blue-500 focus:border-blue-500">
             </div>
-        </div>
+
+            <button type="submit" 
+                    class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition font-medium">
+                ඇතුළු වන්න (Login)
+            </button>
+        </form>
     </div>
 
-    <!-- MAIN APP WRAPPER -->
-    <div id="main-app" class="hidden">
-        <!-- Header -->
-        <header class="bg-blue-600 text-white p-4 text-center text-xl font-bold shadow-md flex justify-between items-center">
-            <span id="header-shop-name">🏪 Smart Shop POS</span>
-            <div class="flex gap-2">
-                <button onclick="connectBluetoothPrinter()" class="bg-blue-800 text-xs px-2 py-1 rounded-full border border-white">🛜 Printer</button>
-                <button onclick="handleLogout()" class="bg-red-500 text-xs px-2 py-1 rounded-full border border-white">Logout</button>
-            </div>
-        </header>
-
-        <!-- Main Container -->
-        <div class="max-w-md mx-auto p-4 space-y-4">
-
-            <!-- Low Stock Warning Banner -->
-            <div id="low-stock-alert" class="hidden bg-red-100 border-l-4 border-red-500 text-red-700 p-3 rounded-lg text-xs font-semibold shadow-sm">
-                <span id="low-stock-text">⚠️ අවවාදයයි: සමහර භාණ්ඩවල Stock අවසන් වෙමින් පවතී!</span>
-            </div>
-
-            <!-- Navigation Tabs -->
-            <div class="flex bg-white rounded-lg shadow p-1 text-xs gap-1 overflow-x-auto">
-                <button onclick="switchTab('billing')" id="btn-billing" class="flex-1 py-2 px-1 text-center font-semibold bg-blue-500 text-white rounded-lg">බිල් කිරීම</button>
-                <button onclick="switchTab('stock')" id="btn-stock" class="flex-1 py-2 px-1 text-center font-semibold text-gray-600">Stock</button>
-                <button onclick="switchTab('credit')" id="btn-credit" class="flex-1 py-2 px-1 text-center font-semibold text-gray-600">ණය පොත</button>
-                <button onclick="switchTab('reports')" id="btn-reports" class="flex-1 py-2 px-1 text-center font-semibold text-gray-600">වාර්තා</button>
-                <button onclick="switchTab('settings')" id="btn-settings" class="flex-1 py-2 px-1 text-center font-semibold text-gray-600">Settings</button>
-            </div>
-
-            <!-- 1. BILLING TAB -->
-            <div id="tab-billing" class="space-y-4">
-                <button onclick="startScanner('billing')" class="w-full bg-green-600 text-white py-3 rounded-xl font-bold shadow hover:bg-green-700 flex justify-center items-center gap-2">
-                    📷 Barcode Scan කර බිල් කරන්න
-                </button>
-                
-                <div id="reader" class="hidden w-full bg-black rounded-xl overflow-hidden shadow-inner"></div>
-
-                <div class="bg-white p-4 rounded-xl shadow space-y-3">
-                    <h3 class="font-bold text-gray-700">භාණ්ඩයක් තෝරන්න</h3>
-                    <select id="product-select" class="w-full p-2 border rounded-lg text-sm">
-                        <option value="">භාණ්ඩයක් තෝරන්න...</option>
-                    </select>
-                    <button onclick="addToCartFromSelect()" class="w-full bg-blue-600 text-white py-2 rounded-lg font-semibold text-sm">බිලට එකතු කරන්න</button>
-                </div>
-
-                <!-- Cart Table -->
-                <div class="bg-white p-4 rounded-xl shadow">
-                    <h3 class="font-bold text-gray-700 mb-2">බිල්පත් විස්තර</h3>
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left border-collapse">
-                            <thead>
-                                <tr class="border-b text-xs text-gray-600">
-                                    <th class="py-2">භාණ්ඩය</th>
-                                    <th class="py-2">මිල</th>
-                                    <th class="py-2">ප්‍රමාණය</th>
-                                    <th class="py-2"></th>
-                                </tr>
-                            </thead>
-                            <tbody id="cart-items" class="text-sm"></tbody>
-                        </table>
-                    </div>
-                    <div class="mt-4 border-t pt-3 flex justify-between text-lg font-bold">
-                        <span>මුළු මුදල:</span>
-                        <span id="grand-total" class="text-blue-600">Rs. 0.00</span>
-                    </div>
-                    <button onclick="openBillPreview()" class="w-full mt-4 bg-orange-500 text-white py-3 rounded-xl font-bold shadow hover:bg-orange-600">
-                        👁️ Bill Preview & Pay
-                    </button>
-                </div>
-            </div>
-
-            <!-- 2. STOCK TAB -->
-            <div id="tab-stock" class="hidden space-y-4">
-                <div class="bg-white p-4 rounded-xl shadow space-y-3">
-                    <h3 class="font-bold text-gray-700 text-sm">අලුත් බඩුවක් / Stock එකතු කරන්න</h3>
-                    
-                    <button onclick="startScanner('stock')" class="w-full bg-purple-600 text-white py-2 rounded-lg font-semibold shadow hover:bg-purple-700 flex justify-center items-center gap-2 text-xs">
-                        📷 Barcode Scan කර අංකය ලබාගන්න
-                    </button>
-                    <div id="stock-reader" class="hidden w-full bg-black rounded-xl overflow-hidden shadow-inner"></div>
-
-                    <input type="text" id="inv-name" placeholder="භාණ්ඩයේ නම" class="w-full p-2 border rounded-lg text-sm">
-                    <div class="flex gap-2">
-                        <input type="number" step="0.01" id="inv-cost" placeholder="ගත් මිල (Cost Rs.)" class="w-1/2 p-2 border rounded-lg text-sm">
-                        <input type="number" step="0.01" id="inv-price" placeholder="විකුණුම් මිල (Rs.)" class="w-1/2 p-2 border rounded-lg text-sm">
-                    </div>
-                    <div class="flex gap-2">
-                        <input type="number" step="0.01" id="inv-stock" placeholder="තොග ප්‍රමාණය" class="w-2/3 p-2 border rounded-lg text-sm">
-                        <select id="inv-unit" class="w-1/3 p-2 border rounded-lg text-sm bg-gray-50 font-semibold">
-                            <option value="Nos">Nos (කෑලි)</option>
-                            <option value="kg">kg (කිලෝ)</option>
-                            <option value="L">L (ලීටර්)</option>
-                            <option value="g">g (ග්‍රෑම්)</option>
-                            <option value="ml">ml (මිලිලීටර්)</option>
-                        </select>
-                    </div>
-                    <input type="text" id="inv-code" placeholder="Barcode අංකය" class="w-full p-2 border rounded-lg text-sm">
-                    <button onclick="saveProduct()" class="w-full bg-blue-600 text-white py-2 rounded-lg font-semibold text-sm">Stock එකට එකතු කරන්න</button>
-                </div>
-
-                <div class="bg-white p-4 rounded-xl shadow">
-                    <h3 class="font-bold text-gray-700 mb-2 text-sm">පවතින Stock ලැයිස්තුව</h3>
-                    <div id="inventory-list" class="space-y-3 text-sm"></div>
-                </div>
-            </div>
-
-            <!-- 3. CREDIT TAB -->
-            <div id="tab-credit" class="hidden space-y-4">
-                <div class="bg-white p-4 rounded-xl shadow space-y-3">
-                    <h3 class="font-bold text-gray-700 text-sm">📖 අලුත් ණයක් එකතු කරන්න</h3>
-                    <input type="text" id="credit-cust-name" placeholder="පාරිභෝගිකයාගේ නම" class="w-full p-2 border rounded-lg text-sm">
-                    <input type="text" id="credit-cust-phone" placeholder="දුරකථන අංකය" class="w-full p-2 border rounded-lg text-sm">
-                    <input type="number" step="0.01" id="credit-amount" placeholder="ණය මුදල (Rs.)" class="w-full p-2 border rounded-lg text-sm">
-                    <button onclick="addManualCredit()" class="w-full bg-amber-600 text-white py-2 rounded-lg font-semibold text-sm hover:bg-amber-700">ණය පොතට එකතු කරන්න</button>
-                </div>
-
-                <div class="bg-white p-4 rounded-xl shadow">
-                    <h3 class="font-bold text-gray-700 mb-2 text-sm">ණය ලැයිස්තුව (Customer Credit Ledger)</h3>
-                    <div id="credit-list" class="space-y-3 text-sm"></div>
-                </div>
-            </div>
-
-            <!-- 4. REPORTS TAB -->
-            <div id="tab-reports" class="hidden space-y-4">
-                <div class="bg-white p-4 rounded-xl shadow text-center space-y-3">
-                    <h3 class="font-bold text-gray-500 text-sm">අද දින වාර්තාව</h3>
-                    
-                    <div class="grid grid-cols-2 gap-2 my-2">
-                        <div class="bg-blue-50 p-2 rounded-lg border border-blue-100">
-                            <p class="text-xs text-gray-500 font-semibold">මුළු විකුණුම්</p>
-                            <p id="today-sales" class="text-xl font-black text-blue-600">Rs. 0.00</p>
-                        </div>
-                        <div class="bg-green-50 p-2 rounded-lg border border-green-100">
-                            <p class="text-xs text-gray-500 font-semibold">ශුද්ධ ලාභය</p>
-                            <p id="today-profit" class="text-xl font-black text-green-600">Rs. 0.00</p>
-                        </div>
-                    </div>
-
-                    <button onclick="resetTodaySales()" class="w-full bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg text-xs shadow">
-                        🔄 අද දින විකුණුම් Reset කරන්න
-                    </button>
-                </div>
-
-                <div class="bg-white p-4 rounded-xl shadow">
-                    <h3 class="font-bold text-gray-700 mb-2 text-sm">විකුණුම් ඉතිහාසය</h3>
-                    <div id="sales-history" class="space-y-2 text-sm max-h-60 overflow-y-auto"></div>
-                </div>
-            </div>
-
-            <!-- 5. SETTINGS TAB -->
-            <div id="tab-settings" class="hidden space-y-4">
-                <div class="bg-white p-4 rounded-xl shadow space-y-3">
-                    <h3 class="font-bold text-gray-700 text-sm">⚙️ ආයතනික තොරතුරු (Receipt Details)</h3>
-                    <input type="text" id="shop-name-input" placeholder="කඩේ නම (Shop Name)" class="w-full p-2 border rounded-lg text-sm">
-                    <input type="text" id="shop-phone-input" placeholder="දුරකථන අංකය (Phone Number)" class="w-full p-2 border rounded-lg text-sm">
-                    <button onclick="saveShopDetails()" class="w-full bg-gray-800 text-white py-2 rounded-lg font-semibold text-sm">විස්තර Save කරන්න</button>
-                </div>
-
-                <div class="bg-white p-4 rounded-xl shadow space-y-3">
-                    <h3 class="font-bold text-gray-700 text-sm">💾 Backup & Restore</h3>
-                    <div class="flex gap-2">
-                        <button onclick="downloadBackup()" class="w-1/2 bg-teal-600 text-white py-2 rounded-lg font-semibold text-xs">Backup Download</button>
-                        <label class="w-1/2 bg-amber-600 text-white py-2 rounded-lg font-semibold text-xs text-center cursor-pointer flex justify-center items-center">
-                            Restore Data <input type="file" id="restore-file" onchange="restoreBackup(event)" class="hidden" accept=".json">
-                        </label>
-                    </div>
-                </div>
-
-                <div class="bg-red-50 border border-red-200 p-4 rounded-xl shadow space-y-2">
-                    <h3 class="font-bold text-red-700 text-sm">🚨 Danger Zone</h3>
-                    <button onclick="fullSystemReset()" class="w-full bg-red-600 hover:bg-red-700 text-white py-2.5 rounded-lg font-bold text-xs shadow">
-                        ⚠️ Full System Reset (සියලු දත්ත මකා දමන්න)
-                    </button>
-                </div>
-            </div>
-
+    <!-- 2. MAIN APPLICATION SCREEN (ආරම්භයේදී සඟවා ඇත) -->
+    <div id="main-app" class="hidden w-full max-w-4xl bg-white rounded-lg shadow-md p-6">
+        <div class="flex justify-between items-center border-b pb-4 mb-6">
+            <h1 class="text-2xl font-bold text-gray-800">Welfare Loan Management System</h1>
+            <button onclick="handleLogout()" 
+                    class="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600 transition text-sm">
+                ඉවත් වන්න (Logout)
+            </button>
         </div>
-    </div>
 
-    <!-- RECEIPT & PAYMENT PREVIEW MODAL -->
-    <div id="bill-modal" class="fixed inset-0 bg-black bg-opacity-60 hidden flex justify-center items-center p-4 z-50">
-        <div class="bg-gray-200 w-full max-w-sm rounded-2xl p-4 shadow-2xl space-y-3">
+        <!-- Dashboard / Main Content Container -->
+        <div class="space-y-4">
+            <p class="text-green-600 font-medium">✓ ඔබ සාර්ථකව පද්ධතියට සම්බන්ධ වී ඇත.</p>
             
-            <div class="bg-white p-4 shadow-md font-mono text-xs text-gray-800 space-y-2 border-t-4 border-gray-800 rounded-t">
-                
-                <div class="text-center space-y-1">
-                    <h2 id="receipt-shop-name" class="text-base font-bold tracking-wider">SMART SHOP</h2>
-                    <p id="receipt-shop-phone" class="text-[11px] text-gray-600">Tel: 077-1234567</p>
-                    <p class="text-[10px] text-gray-500" id="receipt-date"></p>
-                    <p class="border-b border-dashed border-gray-400 my-1"></p>
-                </div>
-                
-                <div id="preview-content" class="space-y-1 max-h-36 overflow-y-auto"></div>
-
-                <p class="border-b border-dashed border-gray-400 my-1"></p>
-
-                <!-- Dynamic Calculations -->
-                <div class="space-y-1.5 font-bold">
-                    <div class="flex justify-between text-xs">
-                        <span>SUBTOTAL:</span>
-                        <span id="preview-subtotal">Rs. 0.00</span>
-                    </div>
-
-                    <div class="flex justify-between items-center font-normal">
-                        <span>DISCOUNT (Rs.):</span>
-                        <input type="number" step="0.01" id="discount-amount" oninput="calculateBalance()" value="0" class="w-20 p-1 text-right border rounded bg-gray-50 font-bold font-mono text-xs">
-                    </div>
-
-                    <div class="flex justify-between text-sm text-blue-600 border-t border-b border-dashed py-1">
-                        <span>NET TOTAL:</span>
-                        <span id="preview-total">Rs. 0.00</span>
-                    </div>
-
-                    <div class="flex justify-between items-center font-normal pt-1">
-                        <span>PAY METHOD:</span>
-                        <select id="payment-method" onchange="toggleCreditFields()" class="p-1 border rounded bg-gray-50 text-xs font-bold">
-                            <option value="CASH">CASH</option>
-                            <option value="CARD">CARD</option>
-                            <option value="ONLINE">ONLINE / QR</option>
-                            <option value="CREDIT">CREDIT (ණය)</option>
-                        </select>
-                    </div>
-
-                    <!-- Customer Info for Credit Billing -->
-                    <div id="credit-customer-box" class="hidden space-y-1 bg-amber-50 p-2 rounded border border-amber-200">
-                        <input type="text" id="bill-cust-name" placeholder="ණය ලබාගන්නාගේ නම *" class="w-full p-1 border rounded text-xs font-normal">
-                        <input type="text" id="bill-cust-phone" placeholder="දුරකථන අංකය" class="w-full p-1 border rounded text-xs font-normal">
-                    </div>
-
-                    <div id="cash-given-box" class="flex justify-between items-center font-normal">
-                        <span>CASH GIVEN:</span>
-                        <div class="flex items-center gap-1">
-                            <span>Rs.</span>
-                            <input type="number" step="0.01" id="cash-given" oninput="calculateBalance()" placeholder="0" class="w-20 p-1 text-right border rounded bg-gray-50 font-bold font-mono text-xs">
-                        </div>
-                    </div>
-
-                    <div id="change-box" class="flex justify-between text-sm text-green-700">
-                        <span>CHANGE:</span>
-                        <span id="preview-balance">Rs. 0.00</span>
-                    </div>
-                </div>
-
-                <p class="border-b border-dashed border-gray-400 my-1"></p>
-                <div class="text-center text-[10px] text-gray-500 pt-1">
-                    <p>Thank You! Come Again.</p>
-                </div>
-
+            <!-- මෙතැනට ඔයාගේ Loan System එකේ Application Forms / Tables එකතු කරගත හැක -->
+            <div class="p-4 bg-gray-50 border border-gray-200 rounded-md">
+                <h3 class="font-bold text-gray-700 mb-2">Dashboard Active</h3>
+                <p class="text-sm text-gray-600">ඔබගේ දත්ත සටහන් කිරීම් සහ ගණනය කිරීම් සඳහා මෙතැන භාවිතා කරන්න.</p>
             </div>
-
-            <!-- Action Buttons -->
-            <div class="flex gap-2">
-                <button onclick="closeBillPreview()" class="w-1/2 bg-gray-400 text-gray-800 py-2.5 rounded-xl font-bold text-sm">ආපසු</button>
-                <button onclick="confirmAndPrint()" class="w-1/2 bg-green-600 text-white py-2.5 rounded-xl font-bold shadow hover:bg-green-700 text-sm">Print Bill</button>
-            </div>
-
         </div>
     </div>
 
-    <!-- JavaScript Logic -->
+    <!-- JAVASCRIPT LOGIC -->
     <script>
-        // 1. Supabase Client Setup
-        const SUPABASE_URL = "https://vpkwgxrabixokeqppduh.supabase.co";
-        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZwa3dneHJhYml4b2tlcXBwZHVoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ2NDAyMzUsImV4cCI6MjEwMDIxNjIzNX0.QA9_iwMeVgWFlx8Np-o1pzSATDKj1JHBmf7FnuzEwBw";
+        // -------------------------------------------------------------
+        // 1. SUPABASE CONFIGURATION
+        // (ඔයාගේ Supabase Project URL එක සහ Anon Key එක මෙතැනට දාන්න)
+        // -------------------------------------------------------------
+        const SUPABASE_URL ="https://rcxzilsgxwnstnyoqocs.supabase.co"; 
+        const SUPABASE_ANON_KEY =  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJjeHppbHNneHduc3RueW9xb2NzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYxNzc1ODIsImV4cCI6MjEwMTc1MzU4Mn0.vRQJwlK1yeM3YrgHmGA-jZeNrliSE2-4I7XHqgAFxjE";
+
         let db = null;
 
-        if (SUPABASE_URL && SUPABASE_KEY && window.supabase) {
-            try {
-                db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-            } catch(e) {
-                console.warn("Supabase Init Warning:", e);
+        // Supabase Client initialization
+        try {
+            if (SUPABASE_URL !== "https://your-project-ref.supabase.co" && typeof supabase !== 'undefined') {
+                db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
             }
+        } catch (e) {
+            console.error("Supabase initialize කිරීමේ දෝෂයක්:", e);
         }
 
-        // 2. Global Variables
-        let products = JSON.parse(localStorage.getItem('pos_products')) || [];
-        let salesHistory = JSON.parse(localStorage.getItem('pos_sales')) || [];
-        let creditLedger = JSON.parse(localStorage.getItem('pos_credits')) || [];
-        let shopDetails = JSON.parse(localStorage.getItem('pos_shop_details')) || { name: "SMART SHOP", phone: "077-1234567" };
-        let cart = [];
-        let printCharacteristic = null;
-        let html5QrCode = null;
-        let currentGrandTotal = 0;
-
-        // 3. Login Handler (Fail-safe, Zero-Crash Logic)
+        // -------------------------------------------------------------
+        // 2. LOGIN FUNCTION
+        // -------------------------------------------------------------
         async function handleLogin() {
             const email = document.getElementById('login-user').value.trim();
             const password = document.getElementById('login-pass').value.trim();
@@ -327,623 +89,64 @@
                 return;
             }
 
-            // Direct Fallback Login: Supabase Table නැතත් මේ Credentials වලින් Log විය හැක
+            // Fallback Offline/Admin Check
             if (email === 'admin@gmail.com' && password === '123') {
                 showMainApp();
                 return;
             }
 
-            // Supabase Table Check (Catch 404 & Connection Errors safely)
-            if (db) {
-                try {
-                    const { data, error } = await db
-                        .from('admin_users')
-                        .select('*')
-                        .eq('email', email)
-                        .eq('password', password);
-
-                    if (!error && data && data.length > 0) {
-                        showMainApp();
-                        return;
-                    }
-                } catch (e) {
-                    console.warn("Supabase login check bypassed:", e.message);
-                }
+            if (!db) {
+                alert('Supabase Connection එක සක්‍රීය නැත! (Project URL/Key පරීක්ෂා කරන්න)');
+                return;
             }
 
-            alert('Login අසාර්ථකයි: Email හෝ Password වැරදියි!');
+            try {
+                // Supabase Auth Login Attempt
+                const { data, error } = await db.auth.signInWithPassword({
+                    email: email,
+                    password: password
+                });
+
+                if (error) {
+                    alert('Login අසාර්ථකයි: ' + error.message);
+                } else if (data.user) {
+                    showMainApp();
+                }
+            } catch (err) {
+                alert('දෝෂයක් සිදු විය: ' + err.message);
+            }
         }
 
-        async function showMainApp() {
-            document.getElementById('login-screen').classList.add('hidden');
-            document.getElementById('main-app').classList.remove('hidden');
-            loadShopDetailsToUI();
-            await loadDataFromSupabase();
-            updateProductDropdown();
-            renderInventory();
-            renderReports();
-            renderCreditList();
-            checkLowStock();
-        }
-
-        function handleLogout() {
+        // -------------------------------------------------------------
+        // 3. LOGOUT FUNCTION
+        // -------------------------------------------------------------
+        async function handleLogout() {
+            if (db) {
+                await db.auth.signOut();
+            }
             document.getElementById('login-screen').classList.remove('hidden');
             document.getElementById('main-app').classList.add('hidden');
+            document.getElementById('login-user').value = '';
+            document.getElementById('login-pass').value = '';
         }
 
-        // 4. App Core Logic
-        function loadShopDetailsToUI() {
-            document.getElementById('header-shop-name').innerText = "🏪 " + shopDetails.name;
-            document.getElementById('shop-name-input').value = shopDetails.name;
-            document.getElementById('shop-phone-input').value = shopDetails.phone;
+        // UI Switcher Function
+        function showMainApp() {
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('main-app').classList.remove('hidden');
         }
 
-        function saveShopDetails() {
-            const name = document.getElementById('shop-name-input').value.trim();
-            const phone = document.getElementById('shop-phone-input').value.trim();
-            if (!name) { alert('කඩේ නම ඇතුළත් කරන්න!'); return; }
-            shopDetails = { name, phone };
-            localStorage.setItem('pos_shop_details', JSON.stringify(shopDetails));
-            loadShopDetailsToUI();
-            alert('සාර්ථකව යාවත්කාලීන විය!');
-        }
-
-        function downloadBackup() {
-            const backupData = { products, salesHistory, creditLedger, shopDetails };
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData));
-            const dl = document.createElement('a');
-            dl.setAttribute("href", dataStr);
-            dl.setAttribute("download", "smart_pos_backup_" + new Date().toISOString().slice(0,10) + ".json");
-            dl.click();
-        }
-
-        function restoreBackup(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const parsed = JSON.parse(e.target.result);
-                    if (parsed.products) products = parsed.products;
-                    if (parsed.salesHistory) salesHistory = parsed.salesHistory;
-                    if (parsed.creditLedger) creditLedger = parsed.creditLedger;
-                    if (parsed.shopDetails) { 
-                        shopDetails = parsed.shopDetails; 
-                        localStorage.setItem('pos_shop_details', JSON.stringify(shopDetails)); 
-                    }
-                    saveData();
-                    loadShopDetailsToUI();
-                    alert('දත්ත Restore විය!');
-                } catch(err) { alert('Backup File එක වැරදිය!'); }
-            };
-            reader.readAsText(file);
-        }
-
-        function fullSystemReset() {
-            if (confirm("⚠️ සියලුම Stock, Sales සහ Credit දත්ත මුල සිට Reset කිරීමට විශ්වාසද?")) {
-                localStorage.clear();
-                alert("System එක Reset විය!");
-                location.reload();
-            }
-        }
-
-        async function saveData() {
-            localStorage.setItem('pos_products', JSON.stringify(products));
-            localStorage.setItem('pos_sales', JSON.stringify(salesHistory));
-            localStorage.setItem('pos_credits', JSON.stringify(creditLedger));
-            
-            updateProductDropdown();
-            renderInventory();
-            renderReports();
-            renderCreditList();
-            checkLowStock();
-
-            // Supabase Safe Sync (Ignores 404 / Missing Tables gracefully)
+        // -------------------------------------------------------------
+        // 4. AUTO-CHECK SESSION ON LOAD
+        // -------------------------------------------------------------
+        window.onload = async () => {
             if (db) {
-                try {
-                    const formattedProducts = products.map(p => ({
-                        id: Number(p.id),
-                        name: String(p.name || ''),
-                        cost: Number(p.cost) || 0,
-                        price: Number(p.price) || 0,
-                        stock: Number(p.stock) || 0,
-                        unit: String(p.unit || 'Nos'),
-                        code: String(p.code || '')
-                    }));
-
-                    if (formattedProducts.length > 0) {
-                        await db.from('products').upsert(formattedProducts);
-                    }
-                } catch (err) {
-                    console.warn("Supabase Sync Skipped gracefully:", err.message);
+                const { data: { session } } = await db.auth.getSession();
+                if (session) {
+                    showMainApp();
                 }
             }
-        }
-
-        async function loadDataFromSupabase() {
-            if (!db) return;
-            try {
-                let { data: prodData, error: err1 } = await db.from('products').select('*');
-                if (!err1 && prodData && prodData.length > 0) products = prodData;
-
-                let { data: salesData, error: err2 } = await db.from('sales').select('*');
-                if (!err2 && salesData && salesData.length > 0) salesHistory = salesData;
-
-                let { data: creditData, error: err3 } = await db.from('credits').select('*');
-                if (!err3 && creditData && creditData.length > 0) creditLedger = creditData;
-
-                localStorage.setItem('pos_products', JSON.stringify(products));
-                localStorage.setItem('pos_sales', JSON.stringify(salesHistory));
-                localStorage.setItem('pos_credits', JSON.stringify(creditLedger));
-            } catch (err) {
-                console.warn("Supabase Load Skipped:", err.message);
-            }
-        }
-
-        function switchTab(tab) {
-            ['billing', 'stock', 'credit', 'reports', 'settings'].forEach(t => {
-                document.getElementById(`tab-${t}`).classList.add('hidden');
-                document.getElementById(`btn-${t}`).className = "flex-1 py-2 px-1 text-center font-semibold text-gray-600";
-            });
-            document.getElementById(`tab-${tab}`).classList.remove('hidden');
-            document.getElementById(`btn-${tab}`).className = "flex-1 py-2 px-1 text-center font-semibold bg-blue-500 text-white rounded-lg";
-        }
-
-        function checkLowStock() {
-            const lowStockAlert = document.getElementById('low-stock-alert');
-            const lowStockText = document.getElementById('low-stock-text');
-            const lowItems = products.filter(p => p.stock <= 5);
-            if (lowItems.length > 0) {
-                lowStockText.innerText = `⚠️ අඩු තොග: ${lowItems.map(i => `${i.name} (${i.stock} ${i.unit || 'Nos'})`).join(', ')}`;
-                lowStockAlert.classList.remove('hidden');
-            } else { lowStockAlert.classList.add('hidden'); }
-        }
-
-        async function connectBluetoothPrinter() {
-            try {
-                const device = await navigator.bluetooth.requestDevice({
-                    acceptAllDevices: true,
-                    optionalServices: ['000018f0-0000-1000-8000-00805f9b34fb', '0000ff00-0000-1000-8000-00805f9b34fb']
-                });
-                const server = await device.gatt.connect();
-                const services = await server.getPrimaryServices();
-                for (let service of services) {
-                    const characteristics = await service.getCharacteristics();
-                    if (characteristics.length > 0) {
-                        printCharacteristic = characteristics[0];
-                        alert("Printer Connect විය!");
-                        break;
-                    }
-                }
-            } catch (error) { alert("Printer connect අසාර්ථකයි: " + error.message); }
-        }
-
-        async function printText(text) {
-            if (!printCharacteristic) return false;
-            const encoder = new TextEncoder();
-            await printCharacteristic.writeValue(encoder.encode(text + "\n\n\n"));
-            return true;
-        }
-
-        function startScanner(mode) {
-            const readerId = mode === 'stock' ? 'stock-reader' : 'reader';
-            document.getElementById(readerId).classList.remove('hidden');
-            if (html5QrCode) html5QrCode.stop().then(() => initCamera(mode)).catch(() => initCamera(mode));
-            else initCamera(mode);
-        }
-
-        function initCamera(mode) {
-            const readerId = mode === 'stock' ? 'stock-reader' : 'reader';
-            html5QrCode = new Html5Qrcode(readerId);
-            html5QrCode.start(
-                { facingMode: "environment" },
-                { fps: 10, qrbox: { width: 250, height: 150 } },
-                (decodedText) => {
-                    if (mode === 'billing') {
-                        const found = products.find(p => p.code === decodedText);
-                        if (found) addToCart(found);
-                        else alert('භාණ්ඩයක් හමු නොවීය: ' + decodedText);
-                    } else if (mode === 'stock') {
-                        document.getElementById('inv-code').value = decodedText;
-                    }
-                    html5QrCode.stop().then(() => document.getElementById(readerId).classList.add('hidden'));
-                }, () => {}
-            ).catch(err => alert("කැමරා දෝෂයකි: " + err));
-        }
-
-        function saveProduct() {
-            const name = document.getElementById('inv-name').value.trim();
-            const cost = parseFloat(document.getElementById('inv-cost').value) || 0;
-            const price = parseFloat(document.getElementById('inv-price').value);
-            const stock = parseFloat(document.getElementById('inv-stock').value);
-            const unit = document.getElementById('inv-unit').value;
-            const code = document.getElementById('inv-code').value.trim();
-
-            if (!name || isNaN(price) || isNaN(stock)) { alert('විස්තර නිවැරදිව පුරවන්න!'); return; }
-
-            let existingIndex = code ? products.findIndex(p => p.code === code) : -1;
-            if (existingIndex === -1) existingIndex = products.findIndex(p => p.name.toLowerCase() === name.toLowerCase());
-
-            if (existingIndex > -1) {
-                products[existingIndex].stock += stock;
-                products[existingIndex].cost = cost;
-                products[existingIndex].price = price;
-                products[existingIndex].unit = unit;
-                if (code) products[existingIndex].code = code;
-            } else {
-                products.push({ id: Date.now(), name, cost, price, stock, unit, code });
-            }
-
-            saveData();
-            document.getElementById('inv-name').value = '';
-            document.getElementById('inv-cost').value = '';
-            document.getElementById('inv-price').value = '';
-            document.getElementById('inv-stock').value = '';
-            document.getElementById('inv-code').value = '';
-            alert('Stock එකට එකතු විය!');
-        }
-
-        function renderInventory() {
-            const list = document.getElementById('inventory-list');
-            list.innerHTML = '';
-            products.forEach(p => {
-                let unitStr = p.unit || 'Nos';
-                let color = p.stock <= 0 ? 'text-red-600 font-bold' : 'text-green-600';
-                list.innerHTML += `
-                    <div class="flex justify-between items-center border-b pb-2">
-                        <div>
-                            <p class="font-bold text-gray-800">${p.name}</p>
-                            <p class="text-xs text-gray-500">ගත්: Rs.${p.cost || 0} | විකුණුම්: Rs.${p.price} | තොගය: <span class="${color}">${p.stock} ${unitStr}</span></p>
-                        </div>
-                        <div class="flex gap-2">
-                            <button onclick="adjustStock(${p.id}, 1)" class="px-2 py-1 bg-green-100 text-green-700 rounded font-bold">+1</button>
-                            <button onclick="deleteProduct(${p.id})" class="text-red-500 text-xs font-bold">Delete</button>
-                        </div>
-                    </div>`;
-            });
-        }
-
-        function adjustStock(id, amt) {
-            const p = products.find(i => i.id === id);
-            if (p) { p.stock += amt; if (p.stock < 0) p.stock = 0; saveData(); }
-        }
-
-        async function deleteProduct(id) {
-            if (confirm('ඉවත් කරන්නද?')) { 
-                products = products.filter(p => p.id !== id); 
-                if (db) {
-                    try { await db.from('products').delete().eq('id', id); } catch(e){}
-                }
-                saveData(); 
-            }
-        }
-
-        function updateProductDropdown() {
-            const select = document.getElementById('product-select');
-            select.innerHTML = '<option value="">භාණ්ඩයක් තෝරන්න...</option>';
-            products.forEach(p => {
-                let unitStr = p.unit || 'Nos';
-                select.innerHTML += `<option value="${p.id}" ${p.stock <= 0 ? 'disabled' : ''}>${p.name} (${p.stock} ${unitStr}) - Rs. ${p.price}</option>`;
-            });
-        }
-
-        function addToCartFromSelect() {
-            const id = document.getElementById('product-select').value;
-            if (id) addToCart(products.find(p => p.id == id));
-        }
-
-        function addToCart(product) {
-            if (product.stock <= 0) { alert('Stock ඉවරයි!'); return; }
-            const existing = cart.find(item => item.id === product.id);
-            if (existing) {
-                if (existing.qty + 1 > product.stock) { alert('Stock සීමාව ඉක්මවා ඇත!'); return; }
-                existing.qty += 1;
-            } else { cart.push({ ...product, qty: 1 }); }
-            renderCart();
-        }
-
-        function renderCart() {
-            const tbody = document.getElementById('cart-items');
-            tbody.innerHTML = '';
-            let total = 0;
-            cart.forEach((item, index) => {
-                let itemTotal = item.price * item.qty;
-                total += itemTotal;
-                let unitStr = item.unit || 'Nos';
-                tbody.innerHTML += `
-                    <tr class="border-b">
-                        <td class="py-2">${item.name}</td>
-                        <td class="py-2">${itemTotal.toFixed(2)}</td>
-                        <td class="py-2 flex items-center gap-1">
-                            <button onclick="changeQty(${index}, -0.5)" class="px-1.5 bg-gray-200 rounded text-xs font-bold">-</button>
-                            <span class="px-1 font-semibold">${item.qty} ${unitStr}</span>
-                            <button onclick="changeQty(${index}, 0.5)" class="px-1.5 bg-gray-200 rounded text-xs font-bold">+</button>
-                        </td>
-                        <td class="py-2"><button onclick="removeFromCart(${index})" class="text-red-500 font-bold">x</button></td>
-                    </tr>`;
-            });
-            document.getElementById('grand-total').innerText = 'Rs. ' + total.toFixed(2);
-        }
-
-        function changeQty(index, delta) {
-            const item = cart[index];
-            const prod = products.find(p => p.id === item.id);
-            let newQty = item.qty + delta;
-            if (delta > 0 && newQty > prod.stock) { alert('Stock සීමාව ඉක්මවා ඇත!'); return; }
-            if (newQty <= 0) { cart.splice(index, 1); }
-            else { item.qty = newQty; }
-            renderCart();
-        }
-
-        function removeFromCart(index) { cart.splice(index, 1); renderCart(); }
-
-        function openBillPreview() {
-            if (cart.length === 0) { alert('බිල්පත හිස්ය!'); return; }
-            document.getElementById('receipt-shop-name').innerText = shopDetails.name;
-            document.getElementById('receipt-shop-phone').innerText = "Tel: " + shopDetails.phone;
-            document.getElementById('receipt-date').innerText = "DATE: " + new Date().toLocaleString();
-
-            let previewDiv = document.getElementById('preview-content');
-            previewDiv.innerHTML = '';
-            currentGrandTotal = 0;
-
-            cart.forEach(item => {
-                let itemTotal = item.price * item.qty;
-                currentGrandTotal += itemTotal;
-                let unitStr = item.unit || 'Nos';
-                previewDiv.innerHTML += `
-                    <div class="flex justify-between">
-                        <span>${item.name} (${item.qty} ${unitStr})</span>
-                        <span>${itemTotal.toFixed(2)}</span>
-                    </div>`;
-            });
-
-            document.getElementById('discount-amount').value = 0;
-            document.getElementById('cash-given').value = '';
-            document.getElementById('payment-method').value = 'CASH';
-            toggleCreditFields();
-            calculateBalance();
-            document.getElementById('bill-modal').classList.remove('hidden');
-        }
-
-        function toggleCreditFields() {
-            const method = document.getElementById('payment-method').value;
-            const creditBox = document.getElementById('credit-customer-box');
-            const cashBox = document.getElementById('cash-given-box');
-            const changeBox = document.getElementById('change-box');
-
-            if (method === 'CREDIT') {
-                creditBox.classList.remove('hidden');
-                cashBox.classList.add('hidden');
-                changeBox.classList.add('hidden');
-            } else {
-                creditBox.classList.add('hidden');
-                cashBox.classList.remove('hidden');
-                changeBox.classList.remove('hidden');
-            }
-        }
-
-        function calculateBalance() {
-            const discount = parseFloat(document.getElementById('discount-amount').value) || 0;
-            const netTotal = Math.max(0, currentGrandTotal - discount);
-
-            document.getElementById('preview-subtotal').innerText = 'Rs. ' + currentGrandTotal.toFixed(2);
-            document.getElementById('preview-total').innerText = 'Rs. ' + netTotal.toFixed(2);
-
-            const cashGiven = parseFloat(document.getElementById('cash-given').value) || 0;
-            const balance = cashGiven - netTotal;
-            const balanceElement = document.getElementById('preview-balance');
-
-            if (balance >= 0) {
-                balanceElement.innerText = 'Rs. ' + balance.toFixed(2);
-                balanceElement.className = "text-green-700 font-bold";
-            } else {
-                balanceElement.innerText = 'SHORT (Rs. ' + Math.abs(balance).toFixed(2) + ')';
-                balanceElement.className = "text-red-600 font-bold";
-            }
-        }
-
-        function closeBillPreview() { document.getElementById('bill-modal').classList.add('hidden'); }
-
-        async function confirmAndPrint() {
-            const discount = parseFloat(document.getElementById('discount-amount').value) || 0;
-            const netTotal = Math.max(0, currentGrandTotal - discount);
-            const payMethod = document.getElementById('payment-method').value;
-            const cashGiven = parseFloat(document.getElementById('cash-given').value) || 0;
-
-            if (payMethod !== 'CREDIT' && cashGiven < netTotal && payMethod === 'CASH') {
-                alert('දුන් මුදල ප්‍රමාණවත් නැත!'); return;
-            }
-
-            let custName = "", custPhone = "";
-            if (payMethod === 'CREDIT') {
-                custName = document.getElementById('bill-cust-name').value.trim();
-                custPhone = document.getElementById('bill-cust-phone').value.trim();
-                if (!custName) { alert('ණය ලබාගන්නා අයගේ නම ඇතුළත් කරන්න!'); return; }
-                addCreditRecord(custName, custPhone, netTotal, `Bill Date: ${new Date().toLocaleDateString()}`);
-            }
-
-            let totalProfit = 0;
-            cart.forEach(item => {
-                let itemCost = item.cost || 0;
-                totalProfit += (item.price - itemCost) * item.qty;
-            });
-            totalProfit = Math.max(0, totalProfit - discount);
-
-            closeBillPreview();
-            let balance = payMethod === 'CASH' ? cashGiven - netTotal : 0;
-
-            let receiptText = `${shopDetails.name}\nTel: ${shopDetails.phone}\n`;
-            receiptText += "Date: " + new Date().toLocaleString() + "\n";
-            receiptText += `PAYMENT: ${payMethod}\n`;
-            if (payMethod === 'CREDIT') receiptText += `CUSTOMER: ${custName}\n`;
-            receiptText += "------------------------------\n";
-
-            cart.forEach(item => {
-                let unitStr = item.unit || 'Nos';
-                receiptText += `${item.name} x ${item.qty} ${unitStr} = Rs.${(item.price * item.qty).toFixed(2)}\n`;
-                const prod = products.find(p => p.id === item.id);
-                if (prod) { prod.stock -= item.qty; if (prod.stock < 0) prod.stock = 0; }
-            });
-
-            receiptText += "------------------------------\n";
-            if (discount > 0) receiptText += `SUBTOTAL: Rs.${currentGrandTotal.toFixed(2)}\nDISCOUNT: Rs.${discount.toFixed(2)}\n`;
-            receiptText += `TOTAL   : Rs.${netTotal.toFixed(2)}\n`;
-            if (payMethod === 'CASH') {
-                receiptText += `CASH    : Rs.${cashGiven.toFixed(2)}\n`;
-                receiptText += `CHANGE  : Rs.${balance.toFixed(2)}\n`;
-            }
-            receiptText += "------------------------------\n";
-            receiptText += "Thank You! Come Again.\n";
-
-            salesHistory.push({
-                id: Date.now(),
-                date: new Date().toLocaleString(),
-                subtotal: currentGrandTotal,
-                discount: discount,
-                total: netTotal,
-                profit: totalProfit,
-                method: payMethod,
-                customer: custName,
-                items: [...cart]
-            });
-
-            saveData();
-            let printed = await printText(receiptText);
-            alert(printed ? 'බිල Print විය!' : 'විකුණුම සාර්ථකව සටහන් විය!');
-
-            cart = [];
-            renderCart();
-        }
-
-        function addManualCredit() {
-            const name = document.getElementById('credit-cust-name').value.trim();
-            const phone = document.getElementById('credit-cust-phone').value.trim();
-            const amount = parseFloat(document.getElementById('credit-amount').value);
-
-            if (!name || isNaN(amount) || amount <= 0) {
-                alert('කරුණාකර නම සහ නිවැරදි ණය මුදල ඇතුළත් කරන්න!');
-                return;
-            }
-
-            addCreditRecord(name, phone, amount, "Manual Entry");
-            document.getElementById('credit-cust-name').value = '';
-            document.getElementById('credit-cust-phone').value = '';
-            document.getElementById('credit-amount').value = '';
-            alert('ණය පොතට සාර්ථකව එකතු විය!');
-        }
-
-        function addCreditRecord(name, phone, amount, note) {
-            let existing = creditLedger.find(c => c.name.toLowerCase() === name.toLowerCase());
-            if (existing) {
-                existing.amount += amount;
-                if (phone) existing.phone = phone;
-                existing.history.push({ date: new Date().toLocaleDateString(), amount: amount, note: note });
-            } else {
-                creditLedger.push({
-                    id: Date.now(),
-                    name: name,
-                    phone: phone || 'N/A',
-                    amount: amount,
-                    history: [{ date: new Date().toLocaleDateString(), amount: amount, note: note }]
-                });
-            }
-            saveData();
-        }
-
-        function renderCreditList() {
-            const list = document.getElementById('credit-list');
-            list.innerHTML = '';
-
-            if (creditLedger.length === 0) {
-                list.innerHTML = '<p class="text-xs text-gray-400">ණයගැතියන් කිසිවෙක් නැත.</p>';
-                return;
-            }
-
-            creditLedger.forEach(c => {
-                list.innerHTML += `
-                    <div class="border-b pb-2 flex justify-between items-center">
-                        <div>
-                            <p class="font-bold text-gray-800">${c.name} <span class="text-xs text-gray-400 font-normal">(${c.phone})</span></p>
-                            <p class="text-xs text-red-600 font-bold">හිඟ ණය: Rs. ${c.amount.toFixed(2)}</p>
-                        </div>
-                        <div class="flex gap-1">
-                            <button onclick="settleCredit(${c.id})" class="px-2 py-1 bg-green-600 text-white rounded text-xs font-semibold shadow">ණය ගෙවන්න</button>
-                            <button onclick="deleteCreditCustomer(${c.id})" class="px-2 py-1 bg-red-100 text-red-600 rounded text-xs font-semibold">x</button>
-                        </div>
-                    </div>`;
-            });
-        }
-
-        function settleCredit(id) {
-            const cust = creditLedger.find(c => c.id === id);
-            if (!cust) return;
-
-            const paid = prompt(`${cust.name} ගෙවන මුදල ඇතුළත් කරන්න (වත්මන් ණය: Rs. ${cust.amount.toFixed(2)}):`);
-            const paidAmt = parseFloat(paid);
-
-            if (!isNaN(paidAmt) && paidAmt > 0) {
-                cust.amount -= paidAmt;
-                if (cust.amount <= 0) {
-                    cust.amount = 0;
-                    alert('සියලුම ණය ගෙවා නිම කරන ලදී!');
-                } else {
-                    alert(`ණය මුදලින් Rs. ${paidAmt.toFixed(2)} කපා හරින ලදී. ඉතිරි ණය: Rs. ${cust.amount.toFixed(2)}`);
-                }
-                saveData();
-            }
-        }
-
-        async function deleteCreditCustomer(id) {
-            if (confirm('මොහුව ණය ලැයිස්තුවෙන් ඉවත් කරන්නද?')) {
-                creditLedger = creditLedger.filter(c => c.id !== id);
-                if (db) {
-                    try { await db.from('credits').delete().eq('id', id); } catch(e){}
-                }
-                saveData();
-            }
-        }
-
-        function renderReports() {
-            const todayStr = new Date().toLocaleDateString();
-            let todaySales = 0;
-            let todayProfit = 0;
-            
-            const historyDiv = document.getElementById('sales-history');
-            historyDiv.innerHTML = '';
-
-            salesHistory = salesHistory || [];
-            salesHistory.forEach(sale => {
-                if (sale.date && sale.date.includes(todayStr)) {
-                    todaySales += sale.total;
-                    todayProfit += (sale.profit || 0);
-                }
-                
-                historyDiv.innerHTML += `
-                    <div class="border-b pb-1 flex justify-between text-xs">
-                        <div>
-                            <span class="text-gray-500">${sale.date}</span>
-                            <span class="ml-1 text-[10px] font-semibold text-blue-600 bg-blue-50 px-1 rounded">${sale.method || 'CASH'}</span>
-                        </div>
-                        <div class="text-right">
-                            <span class="font-bold text-gray-700">Rs. ${sale.total.toFixed(2)}</span>
-                            <span class="text-[10px] text-green-600 block">ලාභය: Rs. ${(sale.profit || 0).toFixed(2)}</span>
-                        </div>
-                    </div>`;
-            });
-
-            document.getElementById('today-sales').innerText = 'Rs. ' + todaySales.toFixed(2);
-            document.getElementById('today-profit').innerText = 'Rs. ' + todayProfit.toFixed(2);
-        }
-
-        function resetTodaySales() {
-            const todayStr = new Date().toLocaleDateString();
-            if (confirm("අද දින විකුණුම් වාර්තා පමණක් Reset කිරීමට ඔබට විශ්වාසද?")) {
-                salesHistory = salesHistory.filter(sale => !sale.date.includes(todayStr));
-                saveData();
-                alert("අද දින විකුණුම් Reset කරන ලදී!");
-            }
-        }
+        };
     </script>
 </body>
 </html>
