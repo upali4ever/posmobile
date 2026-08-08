@@ -294,9 +294,7 @@
 
     <!-- JavaScript Logic -->
     <script>
-       shopDetails.phone
-  <script>
-        // 1. Supabase Initialization (මුලින්ම තිබිය යුතුය)
+        // 1. Supabase Initialization (Must be first)
         const SUPABASE_URL = "https://vpkwgxrabixokeqppduh.supabase.co";
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZwa3dneHJhYml4b2tlcXBwZHVoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ2NDAyMzUsImV4cCI6MjEwMDIxNjIzNX0.QA9_iwMeVgWFlx8Np-o1pzSATDKj1JHBmf7FnuzEwBw";
         let db = null;
@@ -305,7 +303,7 @@
             db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         }
 
-        // 2. Global Variables
+        // 2. Global Variables Initialization
         let products = JSON.parse(localStorage.getItem('pos_products')) || [];
         let salesHistory = JSON.parse(localStorage.getItem('pos_sales')) || [];
         let creditLedger = JSON.parse(localStorage.getItem('pos_credits')) || [];
@@ -315,7 +313,17 @@
         let html5QrCode = null;
         let currentGrandTotal = 0;
 
-        // 3. Login Function (db initialize වූ පසු ක්‍රියා කරයි)
+        // 3. App Load Handler
+        window.onload = async function() {
+            if (db) {
+                const { data: { session } } = await db.auth.getSession();
+                if (session) {
+                    showMainApp();
+                }
+            }
+        };
+
+        // 4. Authentication Functions
         async function handleLogin() {
             const email = document.getElementById('login-user').value.trim();
             const password = document.getElementById('login-pass').value.trim();
@@ -326,7 +334,7 @@
             }
 
             if (!db) {
-                alert('Database connection error! කරුණාකර පිටුව Refresh කරන්න.');
+                alert('Supabase connection load වී නැත. කරුණාකර Refresh කරන්න.');
                 return;
             }
 
@@ -339,30 +347,6 @@
                 alert('Login අසාර්ථකයි: ' + error.message);
             } else {
                 showMainApp();
-            }
-        }
-        }
-
-        async function handleLogin() {
-            const email = document.getElementById('login-user').value.trim();
-            const password = document.getElementById('login-pass').value.trim();
-
-            if(!email || !password) {
-                alert('කරුණාකර Email සහ Password ඇතුළත් කරන්න!');
-                return;
-            }
-
-            if(db) {
-                const { data, error } = await db.auth.signInWithPassword({
-                    email: email,
-                    password: password
-                });
-
-                if(error) {
-                    alert('Login අසාර්ථකයි: ' + error.message);
-                } else {
-                    showMainApp();
-                }
             }
         }
 
@@ -379,13 +363,14 @@
         }
 
         async function handleLogout() {
-            if(db) {
+            if (db) {
                 await db.auth.signOut();
             }
             document.getElementById('login-screen').classList.remove('hidden');
             document.getElementById('main-app').classList.add('hidden');
         }
 
+        // 5. App Core Logic
         function loadShopDetailsToUI() {
             document.getElementById('header-shop-name').innerText = "🏪 " + shopDetails.name;
             document.getElementById('shop-name-input').value = shopDetails.name;
@@ -395,7 +380,7 @@
         function saveShopDetails() {
             const name = document.getElementById('shop-name-input').value.trim();
             const phone = document.getElementById('shop-phone-input').value.trim();
-            if(!name) { alert('කඩේ නම ඇතුළත් කරන්න!'); return; }
+            if (!name) { alert('කඩේ නම ඇතුළත් කරන්න!'); return; }
             shopDetails = { name, phone };
             localStorage.setItem('pos_shop_details', JSON.stringify(shopDetails));
             loadShopDetailsToUI();
@@ -413,15 +398,18 @@
 
         function restoreBackup(event) {
             const file = event.target.files[0];
-            if(!file) return;
+            if (!file) return;
             const reader = new FileReader();
             reader.onload = function(e) {
                 try {
                     const parsed = JSON.parse(e.target.result);
-                    if(parsed.products) products = parsed.products;
-                    if(parsed.salesHistory) salesHistory = parsed.salesHistory;
-                    if(parsed.creditLedger) creditLedger = parsed.creditLedger;
-                    if(parsed.shopDetails) { shopDetails = parsed.shopDetails; localStorage.setItem('pos_shop_details', JSON.stringify(shopDetails)); }
+                    if (parsed.products) products = parsed.products;
+                    if (parsed.salesHistory) salesHistory = parsed.salesHistory;
+                    if (parsed.creditLedger) creditLedger = parsed.creditLedger;
+                    if (parsed.shopDetails) { 
+                        shopDetails = parsed.shopDetails; 
+                        localStorage.setItem('pos_shop_details', JSON.stringify(shopDetails)); 
+                    }
                     saveData();
                     loadShopDetailsToUI();
                     alert('දත්ත Restore විය!');
@@ -613,17 +601,17 @@
             const unit = document.getElementById('inv-unit').value;
             const code = document.getElementById('inv-code').value.trim();
 
-            if(!name || isNaN(price) || isNaN(stock)) { alert('විස්තර නිවැරදිව පුරවන්න!'); return; }
+            if (!name || isNaN(price) || isNaN(stock)) { alert('විස්තර නිවැරදිව පුරවන්න!'); return; }
 
             let existingIndex = code ? products.findIndex(p => p.code === code) : -1;
-            if(existingIndex === -1) existingIndex = products.findIndex(p => p.name.toLowerCase() === name.toLowerCase());
+            if (existingIndex === -1) existingIndex = products.findIndex(p => p.name.toLowerCase() === name.toLowerCase());
 
-            if(existingIndex > -1) {
+            if (existingIndex > -1) {
                 products[existingIndex].stock += stock;
                 products[existingIndex].cost = cost;
                 products[existingIndex].price = price;
                 products[existingIndex].unit = unit;
-                if(code) products[existingIndex].code = code;
+                if (code) products[existingIndex].code = code;
             } else {
                 products.push({ id: Date.now(), name, cost, price, stock, unit, code });
             }
@@ -659,11 +647,11 @@
 
         function adjustStock(id, amt) {
             const p = products.find(i => i.id === id);
-            if(p) { p.stock += amt; if(p.stock < 0) p.stock = 0; saveData(); }
+            if (p) { p.stock += amt; if (p.stock < 0) p.stock = 0; saveData(); }
         }
 
         async function deleteProduct(id) {
-            if(confirm('ඉවත් කරන්නද?')) { 
+            if (confirm('ඉවත් කරන්නද?')) { 
                 products = products.filter(p => p.id !== id); 
                 if (db) {
                     try { await db.from('products').delete().eq('id', id); } catch(e){}
@@ -683,14 +671,14 @@
 
         function addToCartFromSelect() {
             const id = document.getElementById('product-select').value;
-            if(id) addToCart(products.find(p => p.id == id));
+            if (id) addToCart(products.find(p => p.id == id));
         }
 
         function addToCart(product) {
-            if(product.stock <= 0) { alert('Stock ඉවරයි!'); return; }
+            if (product.stock <= 0) { alert('Stock ඉවරයි!'); return; }
             const existing = cart.find(item => item.id === product.id);
-            if(existing) {
-                if(existing.qty + 1 > product.stock) { alert('Stock සීමාව ඉක්මවා ඇත!'); return; }
+            if (existing) {
+                if (existing.qty + 1 > product.stock) { alert('Stock සීමාව ඉක්මවා ඇත!'); return; }
                 existing.qty += 1;
             } else { cart.push({ ...product, qty: 1 }); }
             renderCart();
@@ -723,8 +711,8 @@
             const item = cart[index];
             const prod = products.find(p => p.id === item.id);
             let newQty = item.qty + delta;
-            if(delta > 0 && newQty > prod.stock) { alert('Stock සීමාව ඉක්මවා ඇත!'); return; }
-            if(newQty <= 0) { cart.splice(index, 1); }
+            if (delta > 0 && newQty > prod.stock) { alert('Stock සීමාව ඉක්මවා ඇත!'); return; }
+            if (newQty <= 0) { cart.splice(index, 1); }
             else { item.qty = newQty; }
             renderCart();
         }
@@ -732,7 +720,7 @@
         function removeFromCart(index) { cart.splice(index, 1); renderCart(); }
 
         function openBillPreview() {
-            if(cart.length === 0) { alert('බිල්පත හිස්ය!'); return; }
+            if (cart.length === 0) { alert('බිල්පත හිස්ය!'); return; }
             document.getElementById('receipt-shop-name').innerText = shopDetails.name;
             document.getElementById('receipt-shop-phone').innerText = "Tel: " + shopDetails.phone;
             document.getElementById('receipt-date').innerText = "DATE: " + new Date().toLocaleString();
@@ -766,7 +754,7 @@
             const cashBox = document.getElementById('cash-given-box');
             const changeBox = document.getElementById('change-box');
 
-            if(method === 'CREDIT') {
+            if (method === 'CREDIT') {
                 creditBox.classList.remove('hidden');
                 cashBox.classList.add('hidden');
                 changeBox.classList.add('hidden');
@@ -805,15 +793,15 @@
             const payMethod = document.getElementById('payment-method').value;
             const cashGiven = parseFloat(document.getElementById('cash-given').value) || 0;
 
-            if(payMethod !== 'CREDIT' && cashGiven < netTotal && payMethod === 'CASH') {
+            if (payMethod !== 'CREDIT' && cashGiven < netTotal && payMethod === 'CASH') {
                 alert('දුන් මුදල ප්‍රමාණවත් නැත!'); return;
             }
 
             let custName = "", custPhone = "";
-            if(payMethod === 'CREDIT') {
+            if (payMethod === 'CREDIT') {
                 custName = document.getElementById('bill-cust-name').value.trim();
                 custPhone = document.getElementById('bill-cust-phone').value.trim();
-                if(!custName) { alert('ණය ලබාගන්නා අයගේ නම ඇතුළත් කරන්න!'); return; }
+                if (!custName) { alert('ණය ලබාගන්නා අයගේ නම ඇතුළත් කරන්න!'); return; }
                 addCreditRecord(custName, custPhone, netTotal, `Bill Date: ${new Date().toLocaleDateString()}`);
             }
 
@@ -830,20 +818,20 @@
             let receiptText = `${shopDetails.name}\nTel: ${shopDetails.phone}\n`;
             receiptText += "Date: " + new Date().toLocaleString() + "\n";
             receiptText += `PAYMENT: ${payMethod}\n`;
-            if(payMethod === 'CREDIT') receiptText += `CUSTOMER: ${custName}\n`;
+            if (payMethod === 'CREDIT') receiptText += `CUSTOMER: ${custName}\n`;
             receiptText += "------------------------------\n";
 
             cart.forEach(item => {
                 let unitStr = item.unit || 'Nos';
                 receiptText += `${item.name} x ${item.qty} ${unitStr} = Rs.${(item.price * item.qty).toFixed(2)}\n`;
                 const prod = products.find(p => p.id === item.id);
-                if(prod) { prod.stock -= item.qty; if(prod.stock < 0) prod.stock = 0; }
+                if (prod) { prod.stock -= item.qty; if (prod.stock < 0) prod.stock = 0; }
             });
 
             receiptText += "------------------------------\n";
-            if(discount > 0) receiptText += `SUBTOTAL: Rs.${currentGrandTotal.toFixed(2)}\nDISCOUNT: Rs.${discount.toFixed(2)}\n`;
+            if (discount > 0) receiptText += `SUBTOTAL: Rs.${currentGrandTotal.toFixed(2)}\nDISCOUNT: Rs.${discount.toFixed(2)}\n`;
             receiptText += `TOTAL   : Rs.${netTotal.toFixed(2)}\n`;
-            if(payMethod === 'CASH') {
+            if (payMethod === 'CASH') {
                 receiptText += `CASH    : Rs.${cashGiven.toFixed(2)}\n`;
                 receiptText += `CHANGE  : Rs.${balance.toFixed(2)}\n`;
             }
@@ -875,7 +863,7 @@
             const phone = document.getElementById('credit-cust-phone').value.trim();
             const amount = parseFloat(document.getElementById('credit-amount').value);
 
-            if(!name || isNaN(amount) || amount <= 0) {
+            if (!name || isNaN(amount) || amount <= 0) {
                 alert('කරුණාකර නම සහ නිවැරදි ණය මුදල ඇතුළත් කරන්න!');
                 return;
             }
@@ -889,9 +877,9 @@
 
         function addCreditRecord(name, phone, amount, note) {
             let existing = creditLedger.find(c => c.name.toLowerCase() === name.toLowerCase());
-            if(existing) {
+            if (existing) {
                 existing.amount += amount;
-                if(phone) existing.phone = phone;
+                if (phone) existing.phone = phone;
                 existing.history.push({ date: new Date().toLocaleDateString(), amount: amount, note: note });
             } else {
                 creditLedger.push({
@@ -909,7 +897,7 @@
             const list = document.getElementById('credit-list');
             list.innerHTML = '';
 
-            if(creditLedger.length === 0) {
+            if (creditLedger.length === 0) {
                 list.innerHTML = '<p class="text-xs text-gray-400">ණයගැතියන් කිසිවෙක් නැත.</p>';
                 return;
             }
@@ -931,14 +919,14 @@
 
         function settleCredit(id) {
             const cust = creditLedger.find(c => c.id === id);
-            if(!cust) return;
+            if (!cust) return;
 
             const paid = prompt(`${cust.name} ගෙවන මුදල ඇතුළත් කරන්න (වත්මන් ණය: Rs. ${cust.amount.toFixed(2)}):`);
             const paidAmt = parseFloat(paid);
 
-            if(!isNaN(paidAmt) && paidAmt > 0) {
+            if (!isNaN(paidAmt) && paidAmt > 0) {
                 cust.amount -= paidAmt;
-                if(cust.amount <= 0) {
+                if (cust.amount <= 0) {
                     cust.amount = 0;
                     alert('සියලුම ණය ගෙවා නිම කරන ලදී!');
                 } else {
@@ -949,7 +937,7 @@
         }
 
         async function deleteCreditCustomer(id) {
-            if(confirm('මොහුව ණය ලැයිස්තුවෙන් ඉවත් කරන්නද?')) {
+            if (confirm('මොහුව ණය ලැයිස්තුවෙන් ඉවත් කරන්නද?')) {
                 creditLedger = creditLedger.filter(c => c.id !== id);
                 if (db) {
                     try { await db.from('credits').delete().eq('id', id); } catch(e){}
@@ -968,7 +956,7 @@
 
             salesHistory = salesHistory || [];
             salesHistory.forEach(sale => {
-                if(sale.date.includes(todayStr)) {
+                if (sale.date && sale.date.includes(todayStr)) {
                     todaySales += sale.total;
                     todayProfit += (sale.profit || 0);
                 }
