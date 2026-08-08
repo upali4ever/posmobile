@@ -18,16 +18,16 @@
         <div class="bg-white w-full max-w-sm rounded-2xl p-6 shadow-2xl space-y-4">
             <div class="text-center">
                 <h2 class="text-2xl font-bold text-gray-800">🏪 Smart Shop POS</h2>
-                <p class="text-xs text-gray-500">කරුණාකර Login වන්න</p>
+                <p class="text-xs text-gray-500">කරුණාකර Supabase Email එකෙන් Login වන්න</p>
             </div>
             <div class="space-y-3">
                 <div>
-                    <label class="text-xs font-semibold text-gray-600">Username</label>
-                    <input type="text" id="login-user" value="admin" class="w-full p-2 border rounded-lg text-sm mt-1">
+                    <label class="text-xs font-semibold text-gray-600">Email Address</label>
+                    <input type="email" id="login-user" placeholder="user@example.com" class="w-full p-2 border rounded-lg text-sm mt-1">
                 </div>
                 <div>
                     <label class="text-xs font-semibold text-gray-600">Password</label>
-                    <input type="password" id="login-pass" class="w-full p-2 border rounded-lg text-sm mt-1">
+                    <input type="password" id="login-pass" placeholder="••••••••" class="w-full p-2 border rounded-lg text-sm mt-1">
                 </div>
                 <button onclick="handleLogin()" class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold shadow hover:bg-blue-700 mt-2">Login වන්න</button>
             </div>
@@ -192,13 +192,6 @@
                 </div>
 
                 <div class="bg-white p-4 rounded-xl shadow space-y-3">
-                    <h3 class="font-bold text-gray-700 text-sm">🔒 මුුරපදය වෙනස් කිරීම</h3>
-                    <input type="password" id="old-pass" placeholder="වත්මන් මුරපදය" class="w-full p-2 border rounded-lg text-sm">
-                    <input type="password" id="new-pass" placeholder="අලුත් මුරපදය" class="w-full p-2 border rounded-lg text-sm">
-                    <button onclick="changePassword()" class="w-full bg-indigo-600 text-white py-2 rounded-lg font-semibold text-sm">මුරපදය වෙනස් කරන්න</button>
-                </div>
-
-                <div class="bg-white p-4 rounded-xl shadow space-y-3">
                     <h3 class="font-bold text-gray-700 text-sm">💾 Backup & Restore</h3>
                     <div class="flex gap-2">
                         <button onclick="downloadBackup()" class="w-1/2 bg-teal-600 text-white py-2 rounded-lg font-semibold text-xs">Backup Download</button>
@@ -301,12 +294,13 @@
 
     <!-- JavaScript Logic -->
     <script>
-        // 🚨 ඔයාගේ Supabase Project URL සහ Anon Key එක මෙතනට දාන්න!
+       smobile
+  // 🚨 ඔයාගේ Supabase Project URL සහ Anon Key එක මෙතනට දාන්න!
         const SUPABASE_URL = "https://rcxzilsgxwnstnyoqocs.supabase.co";
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJjeHppbHNneHduc3RueW9xb2NzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYxNzc1ODIsImV4cCI6MjEwMTc1MzU4Mn0.vRQJwlK1yeM3YrgHmGA-jZeNrliSE2-4I7XHqgAFxjE";
         let db = null;
 
-        if (SUPABASE_URL && SUPABASE_KEY !== "YOUR_SUPABASE_ANON_KEY_HERE") {
+        if (SUPABASE_URL && SUPABASE_KEY) {
             db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         }
 
@@ -314,47 +308,60 @@
         let salesHistory = JSON.parse(localStorage.getItem('pos_sales')) || [];
         let creditLedger = JSON.parse(localStorage.getItem('pos_credits')) || [];
         let shopDetails = JSON.parse(localStorage.getItem('pos_shop_details')) || { name: "SMART SHOP", phone: "077-1234567" };
-        let storedPassword = localStorage.getItem('pos_password') || '123';
         let cart = [];
         let printCharacteristic = null;
         let html5QrCode = null;
         let currentGrandTotal = 0;
 
         window.onload = async function() {
-            if(localStorage.getItem('pos_logged') === 'true') {
-                document.getElementById('login-screen').classList.add('hidden');
-                document.getElementById('main-app').classList.remove('hidden');
-                loadShopDetailsToUI();
-                await loadDataFromSupabase();
-                updateProductDropdown();
-                renderInventory();
-                renderReports();
-                renderCreditList();
-                checkLowStock();
+            // Check active session from Supabase
+            if (db) {
+                const { data: { session } } = await db.auth.getSession();
+                if (session) {
+                    showMainApp();
+                }
             }
         }
 
-        function handleLogin() {
-            const u = document.getElementById('login-user').value;
-            const p = document.getElementById('login-pass').value;
-            if(u === 'admin' && p === storedPassword) {
-                localStorage.setItem('pos_logged', 'true');
-                document.getElementById('login-screen').classList.add('hidden');
-                document.getElementById('main-app').classList.remove('hidden');
-                loadShopDetailsToUI();
-                loadDataFromSupabase();
-                updateProductDropdown();
-                renderInventory();
-                renderReports();
-                renderCreditList();
-                checkLowStock();
-            } else {
-                alert('Username හෝ Password වැරදිය!');
+        async function handleLogin() {
+            const email = document.getElementById('login-user').value.trim();
+            const password = document.getElementById('login-pass').value.trim();
+
+            if(!email || !password) {
+                alert('කරුණාකර Email සහ Password ඇතුළත් කරන්න!');
+                return;
+            }
+
+            if(db) {
+                const { data, error } = await db.auth.signInWithPassword({
+                    email: email,
+                    password: password
+                });
+
+                if(error) {
+                    alert('Login අසාර්ථකයි: ' + error.message);
+                } else {
+                    showMainApp();
+                }
             }
         }
 
-        function handleLogout() {
-            localStorage.removeItem('pos_logged');
+        async function showMainApp() {
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('main-app').classList.remove('hidden');
+            loadShopDetailsToUI();
+            await loadDataFromSupabase();
+            updateProductDropdown();
+            renderInventory();
+            renderReports();
+            renderCreditList();
+            checkLowStock();
+        }
+
+        async function handleLogout() {
+            if(db) {
+                await db.auth.signOut();
+            }
             document.getElementById('login-screen').classList.remove('hidden');
             document.getElementById('main-app').classList.add('hidden');
         }
@@ -375,20 +382,8 @@
             alert('සාර්ථකව යාවත්කාලීන විය!');
         }
 
-        function changePassword() {
-            const oldPass = document.getElementById('old-pass').value;
-            const newPass = document.getElementById('new-pass').value;
-            if(oldPass !== storedPassword) { alert('වත්මන් මුරපදය වැරදිය!'); return; }
-            if(!newPass || newPass.length < 2) { alert('වලංගු නව මුරපදයක් දෙන්න!'); return; }
-            storedPassword = newPass;
-            localStorage.setItem('pos_password', storedPassword);
-            document.getElementById('old-pass').value = '';
-            document.getElementById('new-pass').value = '';
-            alert('මුරපදය වෙනස් විය!');
-        }
-
         function downloadBackup() {
-            const backupData = { products, salesHistory, creditLedger, shopDetails, password: storedPassword };
+            const backupData = { products, salesHistory, creditLedger, shopDetails };
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData));
             const dl = document.createElement('a');
             dl.setAttribute("href", dataStr);
@@ -406,7 +401,6 @@
                     if(parsed.products) products = parsed.products;
                     if(parsed.salesHistory) salesHistory = parsed.salesHistory;
                     if(parsed.creditLedger) creditLedger = parsed.creditLedger;
-                    if(parsed.password) { storedPassword = parsed.password; localStorage.setItem('pos_password', storedPassword); }
                     if(parsed.shopDetails) { shopDetails = parsed.shopDetails; localStorage.setItem('pos_shop_details', JSON.stringify(shopDetails)); }
                     saveData();
                     loadShopDetailsToUI();
@@ -417,31 +411,26 @@
         }
 
         function fullSystemReset() {
-            if (confirm("⚠️ සියලුම Stock, Sales, Credit සහ Password මුල සිට Reset කිරීමට විශ්වාසද?")) {
+            if (confirm("⚠️ සියලුම Stock, Sales සහ Credit දත්ත මුල සිට Reset කිරීමට විශ්වාසද?")) {
                 localStorage.clear();
                 alert("System එක Reset විය!");
                 location.reload();
             }
         }
 
-        // --- UPDATED FIXED SUPABASE SAVE FUNCTION ---
         async function saveData() {
-            // LocalStorage Save
             localStorage.setItem('pos_products', JSON.stringify(products));
             localStorage.setItem('pos_sales', JSON.stringify(salesHistory));
             localStorage.setItem('pos_credits', JSON.stringify(creditLedger));
             
-            // UI Sync
             updateProductDropdown();
             renderInventory();
             renderReports();
             renderCreditList();
             checkLowStock();
 
-            // Supabase Cloud Sync
             if (db) {
                 try {
-                    // 1. Format Products
                     const formattedProducts = products.map(p => ({
                         id: Number(p.id),
                         name: String(p.name || ''),
@@ -452,7 +441,6 @@
                         code: String(p.code || '')
                     }));
 
-                    // 2. Format Sales (Cleaned Object array to fix 400 Bad Request)
                     const formattedSales = salesHistory.map(s => {
                         let parsedItems = s.items;
                         if (typeof s.items === 'string') {
@@ -481,7 +469,6 @@
                         };
                     });
 
-                    // 3. Format Credits
                     const formattedCredits = creditLedger.map(c => {
                         let parsedHistory = c.history;
                         if (typeof c.history === 'string') {
@@ -496,16 +483,9 @@
                         };
                     });
 
-                    if (formattedProducts.length > 0) {
-                        await db.from('products').upsert(formattedProducts);
-                    }
-                    if (formattedSales.length > 0) {
-                        const { error: sErr } = await db.from('sales').upsert(formattedSales);
-                        if (sErr) console.error("Sales Sync Error Detail:", sErr);
-                    }
-                    if (formattedCredits.length > 0) {
-                        await db.from('credits').upsert(formattedCredits);
-                    }
+                    if (formattedProducts.length > 0) await db.from('products').upsert(formattedProducts);
+                    if (formattedSales.length > 0) await db.from('sales').upsert(formattedSales);
+                    if (formattedCredits.length > 0) await db.from('credits').upsert(formattedCredits);
 
                     console.log("Supabase Cloud Sync Successful!");
                 } catch (err) {
@@ -514,7 +494,6 @@
             }
         }
 
-        // --- LOAD DATA FROM SUPABASE ON APP START ---
         async function loadDataFromSupabase() {
             if (!db) return;
             try {
@@ -527,7 +506,6 @@
                 let { data: creditData } = await db.from('credits').select('*');
                 if (creditData && creditData.length > 0) creditLedger = creditData;
 
-                // Sync with UI & LocalStorage
                 localStorage.setItem('pos_products', JSON.stringify(products));
                 localStorage.setItem('pos_sales', JSON.stringify(salesHistory));
                 localStorage.setItem('pos_credits', JSON.stringify(creditLedger));
@@ -555,7 +533,6 @@
             } else { lowStockAlert.classList.add('hidden'); }
         }
 
-        // Bluetooth & Camera Functions
         async function connectBluetoothPrinter() {
             try {
                 const device = await navigator.bluetooth.requestDevice({
@@ -608,7 +585,6 @@
             ).catch(err => alert("කැමරා දෝෂයකි: " + err));
         }
 
-        // Inventory Logic
         function saveProduct() {
             const name = document.getElementById('inv-name').value.trim();
             const cost = parseFloat(document.getElementById('inv-cost').value) || 0;
@@ -685,7 +661,6 @@
             });
         }
 
-        // Billing & Cart
         function addToCartFromSelect() {
             const id = document.getElementById('product-select').value;
             if(id) addToCart(products.find(p => p.id == id));
@@ -736,7 +711,6 @@
 
         function removeFromCart(index) { cart.splice(index, 1); renderCart(); }
 
-        // Bill Preview & Calculation Logic
         function openBillPreview() {
             if(cart.length === 0) { alert('බිල්පත හිස්ය!'); return; }
             document.getElementById('receipt-shop-name').innerText = shopDetails.name;
@@ -823,7 +797,6 @@
                 addCreditRecord(custName, custPhone, netTotal, `Bill Date: ${new Date().toLocaleDateString()}`);
             }
 
-            // Calculate Total Profit
             let totalProfit = 0;
             cart.forEach(item => {
                 let itemCost = item.cost || 0;
@@ -877,7 +850,6 @@
             renderCart();
         }
 
-        // CREDIT LEDGER LOGIC
         function addManualCredit() {
             const name = document.getElementById('credit-cust-name').value.trim();
             const phone = document.getElementById('credit-cust-phone').value.trim();
@@ -966,7 +938,6 @@
             }
         }
 
-        // Reports Logic
         function renderReports() {
             const todayStr = new Date().toLocaleDateString();
             let todaySales = 0;
