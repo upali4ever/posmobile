@@ -295,15 +295,17 @@
     <!-- JavaScript Logic -->
     <script>
        smobile
-  // 🚨 ඔයාගේ Supabase Project URL සහ Anon Key එක මෙතනට දාන්න!
-        const SUPABASE_URL = "https://rcxzilsgxwnstnyoqocs.supabase.co";
-        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJjeHppbHNneHduc3RueW9xb2NzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYxNzc1ODIsImV4cCI6MjEwMTc1MzU4Mn0.vRQJwlK1yeM3YrgHmGA-jZeNrliSE2-4I7XHqgAFxjE";
+  <script>
+        // 1. Supabase Initialization (මුලින්ම තිබිය යුතුය)
+        const SUPABASE_URL = "https://vpkwgxrabixokeqppduh.supabase.co";
+        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZwa3dneHJhYml4b2tlcXBwZHVoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ2NDAyMzUsImV4cCI6MjEwMDIxNjIzNX0.QA9_iwMeVgWFlx8Np-o1pzSATDKj1JHBmf7FnuzEwBw";
         let db = null;
 
-        if (SUPABASE_URL && SUPABASE_KEY) {
+        if (SUPABASE_URL && SUPABASE_KEY && window.supabase) {
             db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         }
 
+        // 2. Global Variables
         let products = JSON.parse(localStorage.getItem('pos_products')) || [];
         let salesHistory = JSON.parse(localStorage.getItem('pos_sales')) || [];
         let creditLedger = JSON.parse(localStorage.getItem('pos_credits')) || [];
@@ -313,14 +315,32 @@
         let html5QrCode = null;
         let currentGrandTotal = 0;
 
-        window.onload = async function() {
-            // Check active session from Supabase
-            if (db) {
-                const { data: { session } } = await db.auth.getSession();
-                if (session) {
-                    showMainApp();
-                }
+        // 3. Login Function (db initialize වූ පසු ක්‍රියා කරයි)
+        async function handleLogin() {
+            const email = document.getElementById('login-user').value.trim();
+            const password = document.getElementById('login-pass').value.trim();
+
+            if (!email || !password) {
+                alert('කරුණාකර Email සහ Password ඇතුළත් කරන්න!');
+                return;
             }
+
+            if (!db) {
+                alert('Database connection error! කරුණාකර පිටුව Refresh කරන්න.');
+                return;
+            }
+
+            const { data, error } = await db.auth.signInWithPassword({
+                email: email,
+                password: password
+            });
+
+            if (error) {
+                alert('Login අසාර්ථකයි: ' + error.message);
+            } else {
+                showMainApp();
+            }
+        }
         }
 
         async function handleLogin() {
